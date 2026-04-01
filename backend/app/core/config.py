@@ -9,19 +9,19 @@ class Settings(BaseSettings):
     neo4j_url: str = f"bolt://{server_ip}:7687"
     
      # LLM settings
-    llm_base_url: str = ""
-    llm_api_key: str = ""
-    llm_model: str = ""
+    llm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    llm_api_key: str = "sk-03ae1e6cb82d4b22baa2b3fad5eec971"
+    llm_model: str = "qwen3.5-plus"
 
     # LVLM settings
-    lvlm_base_url: str = ""
-    lvlm_api_key: str = ""
-    lvlm_model: str = ""
+    lvlm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    lvlm_api_key: str = "sk-03ae1e6cb82d4b22baa2b3fad5eec971"
+    lvlm_model: str = "qwen3.5-plus"
 
     # Embedding settings
-    embedding_base_url: str = ""
-    embedding_api_key: str = ""
-    embedding_model: str = ""
+    embedding_base_url: str = "https://api.jina.ai/v1/embeddings"
+    embedding_api_key: str = "jina_05b39064ed6c48efa357c997408919fecGVGA_i-00jZLIbx7R8nCNsKUJpo"
+    embedding_model: str = "jina-embeddings-v4"
 
     
     # Application settings
