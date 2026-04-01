@@ -6,7 +6,10 @@ class Settings(BaseSettings):
     # Database settings
     mysql_url: str = "mysql+pymysql://dzy:dzy2001818@localhost:3306/health_db"
     qdrant_url: str = f"http://{server_ip}:6333"
+    
     neo4j_url: str = f"bolt://{server_ip}:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "dzy2001818"
     
      # LLM settings
     llm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"

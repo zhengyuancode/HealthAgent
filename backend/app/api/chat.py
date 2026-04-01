@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
-from ..schemas.chat import ChatRequest, ChatResponse
-from ..services.chat_service import ChatService
-
+from app.services.orchestration.medical_workflow import build_medical_orchestrator
+from app.schemas.chat_schemas import ChatRequest
+from app.schemas.agent import FinalResponse
 router = APIRouter()
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest, chat_service: ChatService = Depends()):
-    return await chat_service.handle_chat_request(request)
+@router.post("/chat", response_model=FinalResponse)
+async def chat_endpoint(request: ChatRequest, medical_orchestrator = Depends(build_medical_orchestrator)):
+    return await medical_orchestrator.run(request.query)
