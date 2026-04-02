@@ -4,6 +4,8 @@ from app.schemas.agent import AnalysisResult
 from app.core.constants import (
     SYMPTOM_TERMS,
     DRUG_TERMS,
+    PRODUCER_TERMS,
+    COMPLICATION_TERMS,
     DRUG_QUERY_TERMS,
     POLICY_TERMS,
     DEPARTMENT_QUERY_TERMS,
@@ -89,6 +91,12 @@ class QueryAnalyzerService:
 
         if any(term in text for term in POLICY_TERMS):
             domains.append("policy_consult")
+        
+        if any(term in text for term in PRODUCER_TERMS):
+            domains.append("producer_consult")
+            
+        if any(term in text for term in COMPLICATION_TERMS):
+            domains.append("complication_consult")
 
         if not domains:
             domains.append("general")

@@ -224,8 +224,9 @@ def test_embedding():
     embeddings = embedding_client.embed_content(contents)
     # return_multivector=True 时，输出是三维的嵌入向量列表，第一维是输入文本的数量，第二维是各项待嵌入数据的词元数量，第三维是每个词元向量的维度。
     print(len(embeddings), len(embeddings[0]["embeddings"]), len(embeddings[0]["embeddings"][0]))
+    print(embeddings[0]["embeddings"][0])
     # return_multivector=False 时，输出是二维的嵌入向量列表，第一维是输入文本的数量，第二维是每个向量的维度。
-    print(len(embeddings), len(embeddings[0]["embedding"]))
+    # print(len(embeddings), len(embeddings[0]["embedding"]))
     
 def test_llm():
     settings = Settings()
@@ -265,7 +266,7 @@ def test_lvlm():
         print(text, end="", flush=True)
     
 if __name__ == "__main__":
-    # test_embedding()
+    test_embedding()
     # test_llm()
-    test_lvlm()
+    # test_lvlm()
     

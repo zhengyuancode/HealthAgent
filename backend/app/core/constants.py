@@ -8,6 +8,8 @@ Global constants for query understanding and medical assistant logic
 
 INTENT_SYMPTOM = "symptom_consult"
 INTENT_DRUG = "drug_consult"
+INTENT_PRODUCER = "producer_consult"
+INTENT_COMPLICATION = "complication_consult"
 INTENT_POLICY = "policy_consult"
 INTENT_DEPARTMENT = "department_recommend"
 INTENT_GENERAL = "general"
@@ -15,6 +17,8 @@ INTENT_GENERAL = "general"
 INTENT_LIST = [
     INTENT_SYMPTOM,
     INTENT_DRUG,
+    INTENT_PRODUCER,
+    INTENT_COMPLICATION,
     INTENT_POLICY,
     INTENT_DEPARTMENT,
     INTENT_GENERAL,
@@ -29,7 +33,9 @@ INTENT_PRIORITY = {
     INTENT_DEPARTMENT: 1,   # "挂什么科"优先最高
     INTENT_POLICY: 2,
     INTENT_DRUG: 3,
-    INTENT_SYMPTOM: 4,
+    INTENT_PRODUCER: 4,
+    INTENT_COMPLICATION: 5,
+    INTENT_SYMPTOM: 6,
     INTENT_GENERAL: 99,
 }
 
@@ -63,6 +69,16 @@ DRUG_QUERY_TERMS = [
     "药", "用药", "吃什么药", "怎么吃", "剂量",
     "副作用", "不良反应", "禁忌", "说明书",
     "能不能吃", "可以吃吗"
+]
+
+# ---- 药企 / 生产商 ----
+PRODUCER_TERMS = [
+    "药企", "生产厂家", "制药公司", "药物生产商"
+]
+
+# ---- 并发症 ----
+COMPLICATION_TERMS = [
+    "并发症", "会引起什么并发症", "伴随什么病", "相关并发疾病"
 ]
 
 # ---- 医保 / 政策 ----
@@ -107,6 +123,8 @@ SPECIAL_POPULATION_TERMS = [
 INTENT_NEED_GRAPH = {
     INTENT_SYMPTOM: True,
     INTENT_DRUG: True,
+    INTENT_PRODUCER: True,
+    INTENT_COMPLICATION: True,
     INTENT_DEPARTMENT: True,
     INTENT_POLICY: False,
     INTENT_GENERAL: False,
@@ -116,6 +134,8 @@ INTENT_NEED_GRAPH = {
 INTENT_NEED_RAG = {
     INTENT_POLICY: True,
     INTENT_DRUG: True,
+    INTENT_PRODUCER: True,
+    INTENT_COMPLICATION: True,
     INTENT_SYMPTOM: False,
     INTENT_DEPARTMENT: False,
     INTENT_GENERAL: False,
@@ -131,6 +151,8 @@ ENTITY_TERM_POOL = (
     + DRUG_TERMS
     + POLICY_TERMS
     + SPECIAL_POPULATION_TERMS
+    + PRODUCER_TERMS
+    + COMPLICATION_TERMS
 )
 
 # ================================
@@ -142,6 +164,8 @@ INTENT_KEYWORDS = {
     INTENT_POLICY: POLICY_TERMS,
     INTENT_DRUG: DRUG_TERMS + DRUG_QUERY_TERMS,
     INTENT_SYMPTOM: SYMPTOM_TERMS,
+    INTENT_PRODUCER: PRODUCER_TERMS,
+    INTENT_COMPLICATION: COMPLICATION_TERMS,
 }
 
 # ================================
@@ -150,3 +174,4 @@ INTENT_KEYWORDS = {
 
 # 当规则无法确定时的兜底标志
 UNCERTAIN_INTENT = "uncertain"
+

@@ -43,13 +43,13 @@ class PlannerAgent:
   "mode": "single（只采用一个知识源） 或 composite（采用多个知识源）",
   "tasks": [
     {{
-      "semantic_type": "symptom_consult 或 drug_consult 或 department_recommend 或 policy_consult 或 general",
+      "semantic_type": "symptom_consult 或 drug_consult 或 department_recommend 或 producer_consult 或 complication_consult 或 policy_consult 或 general",
       "knowledge_route": "medical_graph 或 policy_rag",
       "question": "子问题1",
       "entities": ["子问题1中实体1", "子问题1中实体2", ...]
     }},
     {{
-      "semantic_type": "symptom_consult 或 drug_consult 或 department_recommend 或 policy_consult 或 general",
+      "semantic_type": "symptom_consult 或 drug_consult 或 department_recommend 或 producer_consult 或 complication_consult 或 policy_consult 或 general",
       "knowledge_route": "medical_graph 或 policy_rag",
       "question": "子问题2",
       "entities": ["子问题2中实体1", "子问题2中实体2", ...]
