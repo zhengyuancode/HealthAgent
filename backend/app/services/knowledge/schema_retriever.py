@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from typing import Any, Dict, List
 from dataclasses import field
 import hashlib
+import pickle
+from qdrant_client import models
+import torch
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -101,62 +105,91 @@ class QdrantSchemaRetriever:
             self.client.delete_collection(self.collection_name)
             
         self.ensure_collection(self.dim)
-        
-        batch_size = 10
-        upsert_batch_size = 500
-        for i in tqdm(range(0, len(docs), batch_size), desc="Indexing schema docs", unit="batch"):
-            try:
-                batch_docs = docs[i:i + batch_size]
-                batch_texts = [doc.to_text() for doc in batch_docs]
-
-                batch_vectors = self.embedder.embed_content(
-                    batch_texts,
-                    task="retrieval.passage"
-                )
-                
-                points = []
-                for doc, vector in tqdm(zip(batch_docs, batch_vectors), desc="Processing batch"):
-                    for k in range(len(vector["embeddings"])):
-                        points.append({
-                            "id": self.make_id(doc, k),
-                            "vector": vector["embeddings"][k],
-                            "payload": {
-                                "doc_key": f"{doc.label}::{doc.std_name}",
-                                "seq_num": k
-                            }
-                        })
-
-                for start in tqdm(range(0, len(points), upsert_batch_size), desc="Upserting points"):
-                    sub_points = points[start:start + upsert_batch_size]
-                    self.client.upsert(
-                        collection_name=self.collection_name,
-                        points=sub_points,
-                    )
-            except Exception as e:
-                print(f"batch {i} failed: {e}")
-                raise
-
-        
-        
-
-        
-
-    def _search(self, query: str, item_type: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        query_vector = self.embedder.embed([query])[0]
-
-        qfilter = Filter(
-            must=[
-                FieldCondition(
-                    key="item_type",
-                    match=MatchValue(value=item_type),
-                )
-            ]
+        self.client.create_payload_index(
+            collection_name=self.collection_name,
+            field_name="doc_key",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+            wait=True,
         )
 
+        self.client.create_payload_index(
+            collection_name=self.collection_name,
+            field_name="seq_num",
+            field_schema=models.PayloadSchemaType.INTEGER,
+            wait=True,
+        )
+        
+        
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        vector_path = os.path.join(BASE_DIR,"..","..","graph", "entity_vectors.pkl")
+        with open(vector_path, 'rb') as f:
+            entity_vectors = pickle.load(f)
+        
+        for doc, vector in tqdm(zip(docs, entity_vectors), desc="Indexing schema docs"):
+            points = []
+            for k in range(len(vector)):
+                points.append({
+                    "id": self.make_id(doc, k),
+                    "vector": vector[k].detach().cpu().tolist(),
+                    "payload": {
+                        "doc_key": f"{doc.label}_{doc.std_name}",
+                        "seq_num": k
+                    }
+                })
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points,
+            )
+        # batch_size = 10
+        # upsert_batch_size = 500
+        # for i in tqdm(range(0, len(docs), batch_size), desc="Indexing schema docs", unit="batch"):
+        #     try:
+        #         batch_docs = docs[i:i + batch_size]
+        #         batch_texts = [doc.to_text() for doc in batch_docs]
+
+        #         batch_vectors = self.embedder.embed_content(
+        #             batch_texts,
+        #             task="retrieval.passage"
+        #         )
+                
+        #         points = []
+        #         for doc, vector in tqdm(zip(batch_docs, batch_vectors), desc="Processing batch"):
+        #             for k in range(len(vector["embeddings"])):
+        #                 points.append({
+        #                     "id": self.make_id(doc, k),
+        #                     "vector": vector["embeddings"][k],
+        #                     "payload": {
+        #                         "doc_key": f"{doc.label}::{doc.std_name}",
+        #                         "seq_num": k
+        #                     }
+        #                 })
+
+        #         for start in tqdm(range(0, len(points), upsert_batch_size), desc="Upserting points"):
+        #             sub_points = points[start:start + upsert_batch_size]
+        #             self.client.upsert(
+        #                 collection_name=self.collection_name,
+        #                 points=sub_points,
+        #             )
+        #     except Exception as e:
+        #         print(f"batch {i} failed: {e}")
+        #         raise
+
+        
+        
+
+        
+
+    def _search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        query_vector = self.embedder.embed_content(
+                    [query],
+                    task="retrieval.query"
+                )
+
+       
         resp = self.client.query_points(
             collection_name=self.collection_name,
-            query=query_vector,
-            query_filter=qfilter,
+            query=query_vector[0]["embedding"],
+            # query_filter=qfilter,
             limit=top_k,
             with_payload=True,
             with_vectors=False,

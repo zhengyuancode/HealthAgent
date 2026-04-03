@@ -29,7 +29,11 @@ def load_or_build_docs():
     return docs
 
 def build_schema_index(settings: Settings):
-    qdrant_client = QdrantClient(url=settings.qdrant_url)
+    qdrant_client = QdrantClient(
+                host=settings.server_ip,
+                port=6333,
+                timeout=120.0,
+            )
 
     embedder = EmbeddingClient(settings)
 

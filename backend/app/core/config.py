@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 
 class Settings(BaseSettings):
-    server_ip: str = "192.168.0.102"
+    server_ip: str = "localhost"
     # Database settings
     mysql_url: str = "mysql+pymysql://dzy:dzy2001818@localhost:3306/health_db"
     qdrant_url: str = f"http://{server_ip}:6333"
