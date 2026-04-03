@@ -3,14 +3,16 @@ from typing import Any, Dict
 
 from app.schemas.agent import AnalysisResult, GraphExecutionOutput, TaskPlan
 from app.services.knowledge.interfaces import MedicalGraphService
+from app.services.knowledge.schema_retriever import QdrantSchemaRetriever
 
 
 class MedicalAgent:
     name = "medical_agent"
 
-    def __init__(self, llm_client, graph_service: MedicalGraphService):
+    def __init__(self, llm_client, graph_service: MedicalGraphService, retriver: QdrantSchemaRetriever):
         self.graph_service = graph_service
         self.llm_client = llm_client
+        self.retriver = retriver
 
     def run(
         self,
@@ -19,8 +21,11 @@ class MedicalAgent:
         try:
             graph_result = self.graph_service.query(
                 query=task.question,
+                retriever=self.retriver,
                 entities=task.entities,
                 semantic_type=task.semantic_type,
+                topk=5,
+                topn=5
             )
 
             summary = self._summarize(task, graph_result)

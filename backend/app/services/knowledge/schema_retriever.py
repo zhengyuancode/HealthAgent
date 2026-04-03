@@ -8,7 +8,7 @@ import hashlib
 import pickle
 from qdrant_client import models
 import torch
-
+import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -177,76 +177,85 @@ class QdrantSchemaRetriever:
         
         
 
-        
+    def late_sim_score(self, query_vectors, doc_vectors):
+        query_vectors = np.asarray(query_vectors, dtype=np.float32)  # [Q, D]
+        doc_vectors = np.asarray(doc_vectors, dtype=np.float32)      # [T, D]
 
-    def _search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        if query_vectors.size == 0 or doc_vectors.size == 0:
+            return 0.0
+
+        sim_matrix = query_vectors @ doc_vectors.T   # [Q, T]
+        return float(np.max(sim_matrix, axis=1).sum())
+
+    def search(self, query: str, top_k: int = 5,top_n: int = 5) -> List[Dict[str, Any]]:
         query_vector = self.embedder.embed_content(
                     [query],
                     task="retrieval.query"
                 )
 
-       
-        resp = self.client.query_points(
-            collection_name=self.collection_name,
-            query=query_vector[0]["embedding"],
-            # query_filter=qfilter,
-            limit=top_k,
-            with_payload=True,
-            with_vectors=False,
-        )
-
-        hits = getattr(resp, "points", resp)
-
-        results: List[Dict[str, Any]] = []
-        for hit in hits:
-            payload = hit.payload or {}
-            results.append(
-                {
-                    "score": hit.score,
-                    "std_name": payload.get("std_name", ""),
-                    "aliases": payload.get("aliases", []),
-                    "desc": payload.get("desc", ""),
-                    "semantic_type": payload.get("semantic_type", ""),
-                    "item_type": payload.get("item_type", ""),
-                }
+        hits_list=[]
+        for v in query_vector[0]["embedding"]:
+            resp = self.client.query_points(
+                collection_name=self.collection_name,
+                query=v,
+                # query_filter=qfilter,
+                limit=top_n,
+                with_payload=True,
+                with_vectors=False,
             )
-        return results
 
-    def retrieve_entities(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        return self._search(query=query, item_type="entity", top_k=top_k)
+            hits = getattr(resp, "points", resp)
+            hits_list.append(hits)
 
-    def retrieve_relations(self, query: str, top_k: int = 1) -> List[Dict[str, Any]]:
-        return self._search(query=query, item_type="relation", top_k=top_k)
+        entities = []
+        for hits in hits_list:
+            for hit in hits:
+                payload = hit.payload or {}
+                doc_key = payload.get("doc_key","")
+                if doc_key in entities:
+                    continue
+                else:
+                    entities.append(doc_key)
+        
+        candidate_docs = []
+        for doc_key in entities:
+            scroll_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="doc_key",
+                        match=MatchValue(value=doc_key)
+                    )
+                ]
+            )
 
-    def ground(
-        self,
-        query: str,
-        entity_top_k: int = 5,
-        relation_top_k: int = 3,
-    ) -> Dict[str, Any]:
-        entity_hits = self.retrieve_entities(query, top_k=entity_top_k)
-        relation_hits = self.retrieve_relations(query, top_k=relation_top_k)
+            points, _ = self.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=scroll_filter,
+                limit=2000,   # 单文档 token 数通常不会特别大，先给大一点
+                with_payload=True,
+                with_vectors=True,
+            )
 
-        entity_hits = [
-            x for x in entity_hits
-            if x["score"] >= self.ENTITY_SCORE_THRESHOLD
-        ]
-        relation_hits = [
-            x for x in relation_hits
-            if x["score"] >= self.RELATION_SCORE_THRESHOLD
-        ]
+            doc_vectors = []
+            for p in points:
+                payload = p.payload or {}
+                seq_num = payload.get("seq_num", -1)
 
-        normalized_entities = unique_keep_order(
-            [x["std_name"] for x in entity_hits]
-        )
+                vector = None
+                if hasattr(p, "vector") and p.vector is not None:
+                    vector = p.vector
+                elif hasattr(p, "vectors") and p.vectors is not None:
+                    vector = p.vectors
 
-        semantic_type = ""
-        if relation_hits:
-            semantic_type = relation_hits[0].get("semantic_type", "") or ""
+                if vector is None:
+                    continue
 
-        return {
-            "entity_hits": entity_hits,
-            "relation_hits": relation_hits,
-            "normalized_entities": normalized_entities,
-            "semantic_type": semantic_type,
-        }
+                doc_vectors.append(vector)
+
+            candidate_docs.append({
+                "doc_key": doc_key,
+                "doc_vectors": doc_vectors,
+                "score": self.late_sim_score(query_vector[0]["embedding"], doc_vectors)
+            })
+        sorted_docs = sorted(candidate_docs, key=lambda x: x["score"], reverse=True)
+        return sorted_docs[:top_k]
