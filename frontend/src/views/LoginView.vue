@@ -3,7 +3,7 @@
     <div class="login-card">
       <div class="logo-area">
         <el-icon class="logo-icon">
-          <MedicalCare />
+          <Plus />
         </el-icon>
         <h2>智能医疗助手</h2>
       </div>
@@ -17,7 +17,7 @@
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
-            placeholder="请输入用户名"
+            placeholder="请输入用户名/手机号"
             :prefix-icon="User"
           />
         </el-form-item>
@@ -49,6 +49,10 @@
           登录
         </el-button>
       </el-form>
+      
+      <div class="login-footer">
+        <el-link @click="goToRegister">还没有账号？立即注册</el-link>
+      </div>
     </div>
   </div>
 </template>
@@ -60,7 +64,7 @@ import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import LoginSlideVerify from '@/components/LoginSlideVerify.vue'
 import request from '@/utils/request'
-import { User, Lock, MedicalCare } from '@element-plus/icons-vue'
+import { User, Lock, Plus } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const formRef = ref()
@@ -74,7 +78,7 @@ const loginForm = reactive({
 
 const rules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: '请输入用户名/手机号', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' }
@@ -120,6 +124,10 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const goToRegister = () => {
+  router.push('/register')
 }
 </script>
 
