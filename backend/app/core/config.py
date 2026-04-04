@@ -1,10 +1,29 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from urllib.parse import quote_plus
 
 class Settings(BaseSettings):
     server_ip: str = "localhost"
     # Database settings
-    mysql_url: str = "mysql+pymysql://dzy:dzy2001818@localhost:3306/health_db"
+    mysql_host: str = "127.0.0.1"
+    mysql_port: int = 3306
+    mysql_user: str = "root"
+    mysql_password: str = "dzy2001818"
+    mysql_db: str = "health_agent"
+    
+    jwt_secret_key: str = "hkasdjhgasdghlkasjhgklasuhowaefabase"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60 * 24 * 7  # 7天
+    
+    @property
+    def sqlalchemy_database_uri(self) -> str:
+        password = quote_plus(self.mysql_password)
+        return (
+            f"mysql+pymysql://{self.mysql_user}:{password}"
+            f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_db}?charset=utf8mb4"
+        )
+    
+    
     qdrant_url: str = f"http://{server_ip}:6333"
     
     neo4j_url: str = f"bolt://{server_ip}:7687"
