@@ -194,7 +194,7 @@ class QdrantSchemaRetriever:
                 )
 
         hits_list=[]
-        for v in query_vector[0]["embedding"]:
+        for v in query_vector[0]["embeddings"]:
             resp = self.client.query_points(
                 collection_name=self.collection_name,
                 query=v,
