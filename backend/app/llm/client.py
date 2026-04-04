@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Iterator
 from app.core.config import Settings
 import requests
 from openai import OpenAI
@@ -51,28 +51,40 @@ class LLMClient:
         messages: List[Dict[str, Any]],
         thinking: bool = False,
         **kwargs
-    ) -> Any:
-        """
-        流式输出接口，返回一个生成器，逐步产出模型的回复内容
-        """
-        if thinking:
-            kwargs["extra_body"] = {"enable_thinking": True}
-        else:
-            kwargs["extra_body"] = {"enable_thinking": False}
-            
+    ) -> Iterator[Dict[str, str]]:
+        extra_body = kwargs.pop("extra_body", {})
+        extra_body["enable_thinking"] = thinking
+
         completion = self.client.chat.completions.create(
-            model=self.model,  # 此处以qwen-plus为例，可按需更换模型名称。模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            model=self.model,
             messages=messages,
             stream=True,
             stream_options={"include_usage": True},
+            extra_body=extra_body,
             **kwargs
-            )
+        )
+
         for chunk in completion:
-            # print("Received chunk:", chunk)  # 调试输出，查看每个流式返回的内容
-            if len(chunk.choices) > 0:
-                delta = chunk.choices[0].delta
-                text = delta.content
-                yield text
+            if not chunk.choices:
+                # 最后一个 chunk 可能主要是 usage
+                continue
+
+            delta = chunk.choices[0].delta
+
+            reasoning_text = getattr(delta, "reasoning_content", None)
+            answer_text = getattr(delta, "content", None)
+
+            if reasoning_text:
+                yield {
+                    "type": "thinking",
+                    "delta": reasoning_text
+                }
+
+            if answer_text:
+                yield {
+                    "type": "answer",
+                    "delta": answer_text
+                }
     
     def chat_json(
         self,

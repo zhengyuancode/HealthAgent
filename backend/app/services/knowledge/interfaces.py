@@ -17,7 +17,8 @@ class MedicalGraphService(ABC):
         raise NotImplementedError
         
 
-class PolicyRAGService:
+class PolicyRAGService(ABC):
+    @abstractmethod
     def retrieve(
         self,
         query: str,

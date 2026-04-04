@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from .core.config import Settings
-from .api.chat import router as chat_router
+from app.core.config import Settings
+from app.api.chat import router as chat_router
 from app.api.auth import router as auth_router
 
 def create_app() -> FastAPI:

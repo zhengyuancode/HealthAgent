@@ -5,7 +5,7 @@ import bcrypt
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 
-from app.core.config import settings
+from app.core.config import Settings
 
 
 class TokenExpiredError(Exception):
@@ -33,7 +33,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_access_token(user_id: int, username: str) -> tuple[str, int]:
-    expire_seconds = settings.jwt_access_token_expire_minutes * 60
+    expire_seconds = Settings().jwt_access_token_expire_minutes * 60
     now = datetime.now(timezone.utc)
     exp = now + timedelta(seconds=expire_seconds)
 
@@ -47,8 +47,8 @@ def create_access_token(user_id: int, username: str) -> tuple[str, int]:
 
     token = jwt.encode(
         payload,
-        settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm,
+        Settings().jwt_secret_key,
+        algorithm=Settings().jwt_algorithm,
     )
     return token, expire_seconds
 
@@ -57,8 +57,8 @@ def parse_token(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(
             token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm],
+            Settings().jwt_secret_key,
+            algorithms=[Settings().jwt_algorithm],
         )
     except ExpiredSignatureError as exc:
         raise TokenExpiredError("登录已过期，请重新登录") from exc

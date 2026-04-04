@@ -1,6 +1,5 @@
 <template>
   <div class="chat-container">
-    <!-- 左侧边栏 -->
     <div class="chat-sidebar">
       <el-button 
         type="primary" 
@@ -34,9 +33,7 @@
       </div>
     </div>
     
-    <!-- 右侧主内容区 -->
     <div class="chat-main">
-      <!-- 消息列表 -->
       <div class="chat-messages">
         <ChatMessage 
           v-for="(message, index) in currentMessages" 
@@ -45,7 +42,6 @@
         />
       </div>
       
-      <!-- 输入区 -->
       <div class="chat-input-area">
         <el-input
           v-model="inputMessage"
@@ -58,7 +54,7 @@
         <el-button 
           type="primary" 
           class="send-button"
-          :disabled="isSending"
+          :disabled="isGenerating"
           @click="sendMessage"
         >
           <el-icon><ArrowRight /></el-icon>
@@ -69,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useChatStream } from '@/composables/useChatStream'
@@ -80,97 +76,63 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const inputMessage = ref('')
-const isSending = ref(false)
 
-// 对话列表
 const dialogs = ref([
   { title: '第一次咨询', messages: [] }
 ])
 
-// 当前选中的对话索引
 const selectedIndex = ref(0)
 
-// 获取当前对话的消息列表
 const currentMessages = computed(() => {
   return dialogs.value[selectedIndex.value]?.messages || []
 })
 
-// 获取用户信息
 const userInfo = computed(() => {
   return userStore.userInfo
 })
 
-// 初始化聊天流
-const { messages, isGenerating, sendMessage: streamSendMessage } = useChatStream()
+const { isGenerating, sendMessage: streamSendMessage } = useChatStream()
 
-// 监听聊天消息变化并更新当前对话
-const updateCurrentDialog = () => {
-  if (dialogs.value[selectedIndex.value]) {
-    dialogs.value[selectedIndex.value].messages = [...messages.value]
-  }
-}
-
-// 新建对话
 const newDialog = () => {
-  const newDialog = {
+  dialogs.value.push({
     title: `对话 ${dialogs.value.length + 1}`,
     messages: []
-  }
-  dialogs.value.push(newDialog)
+  })
   selectedIndex.value = dialogs.value.length - 1
 }
 
-// 切换对话
 const switchDialog = (index) => {
   selectedIndex.value = index
 }
 
-// 发送消息
 const sendMessage = async () => {
-  if (!inputMessage.value.trim() || isSending.value) return
-  
-  isSending.value = true
+  if (!inputMessage.value.trim() || isGenerating.value) return
+
   const message = inputMessage.value.trim()
   inputMessage.value = ''
-  
+
   try {
-    await streamSendMessage(message)
+    await streamSendMessage(currentMessages.value, message)
   } catch (error) {
     console.error('发送消息失败:', error)
-  } finally {
-    isSending.value = false
   }
 }
 
-// 处理键盘事件
 const handleKeyDown = (event) => {
   if (event.key === 'Enter') {
     if (event.ctrlKey || event.metaKey) {
-      // Ctrl+Enter 换行
       inputMessage.value += '\n'
     } else {
-      // Enter 发送
       event.preventDefault()
       sendMessage()
     }
   }
 }
 
-// 退出登录
 const handleLogout = () => {
   userStore.clearToken()
   router.push('/login')
 }
-
-// 监听聊天消息变化
-onMounted(() => {
-  // 监听消息变化
-  const interval = setInterval(() => {
-    updateCurrentDialog()
-  }, 100)
-  
-  return () => clearInterval(interval)
-})
 </script>
 
 <style scoped>

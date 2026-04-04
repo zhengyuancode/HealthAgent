@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class RegisterRequest(BaseModel):
     phone: str = Field(..., min_length=6, max_length=20)
-    username: str = Field(..., min_length=4, max_length=50)
+    username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=8, max_length=64)
 
     @field_validator("phone")
@@ -18,8 +18,8 @@ class RegisterRequest(BaseModel):
     @field_validator("username")
     @classmethod
     def validate_username(cls, value: str) -> str:
-        if not re.fullmatch(r"[A-Za-z0-9_]{4,50}", value):
-            raise ValueError("账户名只能包含字母、数字、下划线，长度 4-50 位")
+        if not re.fullmatch(r"[A-Za-z0-9_]{3,50}", value):
+            raise ValueError("账户名只能包含字母、数字、下划线，长度 3-50 位")
         return value
 
     @field_validator("password")
@@ -31,7 +31,7 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    account: str = Field(..., min_length=4, max_length=50, description="手机号或账户名")
+    account: str = Field(..., min_length=3, max_length=50, description="手机号或账户名")
     password: str = Field(..., min_length=8, max_length=64)
 
 

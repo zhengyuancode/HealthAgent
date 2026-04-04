@@ -7,24 +7,31 @@ const request = axios.create({
 
 // 请求拦截器
 request.interceptors.request.use(
-  config => {
+  (config) => {
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  error => {
+  (error) => {
     return Promise.reject(error)
   }
 )
 
 // 响应拦截器
 request.interceptors.response.use(
-  response => {
+  (response) => {
     return response.data
   },
-  error => {
+  (error) => {
+    const status = error?.response?.status
+
+    if (status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+    }
+
     return Promise.reject(error)
   }
 )

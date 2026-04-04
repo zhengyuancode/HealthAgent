@@ -78,7 +78,7 @@ class PlannerAgent:
         for idx, item in enumerate(plan_data.get("tasks", []), start=1):
             tasks.append(
                 TaskPlan(
-                    task_id=item.get(f"task_{idx}"),
+                    task_id=f"task_{idx}",
                     semantic_type=item.get("semantic_type", "general"),
                     knowledge_route=item.get("knowledge_route", "none"),
                     question=item.get("question", analysis.raw_query),

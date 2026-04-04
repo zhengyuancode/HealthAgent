@@ -1,7 +1,8 @@
 import json
-from typing import Any, Dict
+import asyncio
+from typing import Any, Dict, AsyncGenerator, List
 
-from app.schemas.agent import AnalysisResult, GraphExecutionOutput, TaskPlan
+from app.schemas.agent import GraphExecutionOutput, TaskPlan
 from app.services.knowledge.interfaces import MedicalGraphService
 from app.services.knowledge.schema_retriever import QdrantSchemaRetriever
 
@@ -14,10 +15,7 @@ class MedicalAgent:
         self.llm_client = llm_client
         self.retriver = retriver
 
-    def run(
-        self,
-        task: TaskPlan
-    ) -> GraphExecutionOutput:
+    def run(self, task: TaskPlan) -> GraphExecutionOutput:
         try:
             graph_result = self.graph_service.query(
                 query=task.question,
@@ -44,10 +42,94 @@ class MedicalAgent:
                 status="failed"
             )
 
-    def _summarize(self, task: TaskPlan, graph_result: Dict[str, Any]) -> str:
-        if self.llm_client is None:
-            return f"已完成图谱推理：{task.question}"
+    async def stream_run(self, task: TaskPlan) -> AsyncGenerator[Dict[str, Any], None]:
+        try:
+            yield {
+                "type": "status",
+                "data": {"message": f"[图谱] 正在检索：{task.question}"}
+            }
 
+            graph_result = await asyncio.to_thread(
+                self.graph_service.query,
+                query=task.question,
+                retriever=self.retriver,
+                entities=task.entities,
+                semantic_type=task.semantic_type,
+                topk=5,
+                topn=5
+            )
+
+            yield {
+                "type": "status",
+                "data": {"message": "[图谱] 检索完成，正在生成中间总结"}
+            }
+
+            summary = ""
+
+            if self.llm_client is not None and hasattr(self.llm_client, "stream_chat"):
+                yield {
+                    "type": "thinking",
+                    "data": {"delta": f"\n【图谱子任务】{task.question}\n"}
+                }
+
+                messages = self._build_messages(task, graph_result)
+
+                for chunk in self.llm_client.stream_chat(
+                    messages=messages,
+                    thinking=False
+                ):
+                    if chunk["type"] == "thinking":
+                        yield {
+                            "type": "thinking",
+                            "data": {"delta": chunk["delta"]}
+                        }
+                    elif chunk["type"] == "answer":
+                        summary += chunk["delta"]
+                        yield {
+                            "type": "thinking",
+                            "data": {"delta": chunk["delta"]}
+                        }
+
+                yield {
+                    "type": "thinking",
+                    "data": {"delta": "\n"}
+                }
+            else:
+                summary = await asyncio.to_thread(self._summarize, task, graph_result)
+                yield {
+                    "type": "thinking",
+                    "data": {"delta": f"\n【图谱子任务】{task.question}\n{summary}\n"}
+                }
+
+            result = GraphExecutionOutput(
+                task=task,
+                summary=summary,
+                evidence=[{"source": "graph", "content": graph_result}],
+                status="success"
+            )
+
+            yield {
+                "type": "result_object",
+                "data": result
+            }
+
+        except Exception as e:
+            result = GraphExecutionOutput(
+                task=task,
+                summary=f"图谱检索失败: {e}",
+                evidence=[],
+                status="failed"
+            )
+            yield {
+                "type": "status",
+                "data": {"message": result.summary}
+            }
+            yield {
+                "type": "result_object",
+                "data": result
+            }
+
+    def _build_messages(self, task: TaskPlan, graph_result: Dict[str, Any]) -> List[Dict[str, str]]:
         system_prompt = """
 你是医疗问答系统中的 Medical Agent。
 请基于提供的知识图谱检索结果回答子问题。
@@ -67,8 +149,14 @@ class MedicalAgent:
 图谱结果：
 {json.dumps(graph_result, ensure_ascii=False, indent=2)}
 """
-        messages = [
+        return [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
+
+    def _summarize(self, task: TaskPlan, graph_result: Dict[str, Any]) -> str:
+        if self.llm_client is None:
+            return f"已完成图谱推理：{task.question}"
+
+        messages = self._build_messages(task, graph_result)
         return self.llm_client.chat(messages=messages, thinking=False).strip()
