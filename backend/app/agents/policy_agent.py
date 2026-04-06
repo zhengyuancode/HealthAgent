@@ -73,18 +73,18 @@ class PolicyRAGAgent:
                     if chunk["type"] == "thinking":
                         yield {
                             "type": "thinking",
-                            "data": {"delta": chunk["delta"]}
+                            "delta": chunk["delta"]
                         }
                     elif chunk["type"] == "answer":
                         summary += chunk["delta"]
                         yield {
                             "type": "thinking",
-                            "data": {"delta": chunk["delta"]}
+                            "delta": chunk["delta"]
                         }
 
                 yield {
                     "type": "thinking",
-                    "data": {"delta": "\n"}
+                    "delta": "\n"
                 }
             else:
                 summary = await asyncio.to_thread(self._summarize, task, rag_docs)
@@ -96,7 +96,7 @@ class PolicyRAGAgent:
             result = RagExecutionOutput(
                 task=task,
                 summary=summary,
-                evidence=[{"source": "policy_rag", "content": doc} for doc in rag_docs],
+                evidence=[{"source": "policy_rag", "content": doc["content"]} for doc in rag_docs],
                 status="success"
             )
 
@@ -122,6 +122,7 @@ class PolicyRAGAgent:
             }
 
     def _build_messages(self, task: TaskPlan, rag_docs: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+        content_list = [doc["content"] for doc in rag_docs]
         system_prompt = """
 你是医疗问答系统中的 PolicyRAG Agent。
 请基于检索到的政策文本进行回复。
@@ -131,7 +132,7 @@ class PolicyRAGAgent:
 子问题：{task.question}
 
 政策检索结果：
-{json.dumps(rag_docs, ensure_ascii=False, indent=2)}
+{json.dumps(content_list, ensure_ascii=False, indent=2)}
 """
         return [
             {"role": "system", "content": system_prompt},

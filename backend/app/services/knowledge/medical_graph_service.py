@@ -33,8 +33,9 @@ def _normalize_str_list(value: Any) -> List[str]:
     return [str(value).strip()]
 
 class Neo4jMedicalGraphService(MedicalGraphService):
-    def __init__(self, neo4j_uri: str, username: str, password: str):
+    def __init__(self, neo4j_uri: str, username: str, password: str, retriver: QdrantSchemaRetriever):
         self.driver = GraphDatabase.driver(neo4j_uri, auth=(username, password))
+        self.retriever = retriver
 
     def close(self):
         self.driver.close()
@@ -42,7 +43,6 @@ class Neo4jMedicalGraphService(MedicalGraphService):
     def query(
         self,
         query: str,
-        retriever: QdrantSchemaRetriever,
         entities: Optional[List[str]] = None,
         semantic_type: str = "",
         topk: int = 5,
@@ -50,7 +50,7 @@ class Neo4jMedicalGraphService(MedicalGraphService):
     ) -> Dict[str, Any]:
         entities = entities or []
 
-        emb_entities = self._get_emb_entities(retriever, query, topk, topn)
+        emb_entities = self._get_emb_entities(self.retriever, query, topk, topn)
         candidates = self._merge_candidates(entities, emb_entities)
         graph_entities = self._match_graph_entities(candidates)
         entity_details = self._get_entity_details(
@@ -132,7 +132,6 @@ class Neo4jMedicalGraphService(MedicalGraphService):
         docs = retriever.search(query, topk, topn)
         emb_entities = []
         seen = set()
-
         for doc in docs:
             doc_key = doc.get("doc_key", "")
             if not doc_key:
@@ -154,7 +153,6 @@ class Neo4jMedicalGraphService(MedicalGraphService):
                 "label": label,
                 "name": name
             })
-
         return emb_entities
 
     def _merge_candidates(

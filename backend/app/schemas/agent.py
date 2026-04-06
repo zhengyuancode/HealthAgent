@@ -7,11 +7,13 @@ SemanticType = Literal[
     "drug_consult",
     "department_recommend",
     "policy_consult",
+    "complication_consult",
+    "producer_consult",
     "general",
     "mixed",
 ]
 
-KnowledgeRoute = Literal["graph", "policy_rag", "graph+policy_rag", "none"]
+KnowledgeRoute = Literal["medical_graph", "policy_rag", "memory", "none"]
 RiskLevel = Literal["low", "medium", "high"]
 RunStatus = Literal["success", "failed", "skipped"]
 
@@ -53,6 +55,15 @@ class GraphExecutionOutput(BaseModel):
     evidence: List[Dict[str, Any]] = Field(default_factory=list)
     status: str
 
+class NoneExecutionOutput(BaseModel):
+    task: TaskPlan
+    summary: str
+    status: str
+    
+class MemoryExecutionOutput(BaseModel):
+    task: TaskPlan
+    summary: str
+    status: str
 
 class FinalResponse(BaseModel):
     answer: str

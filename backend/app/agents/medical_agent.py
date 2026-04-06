@@ -4,22 +4,19 @@ from typing import Any, Dict, AsyncGenerator, List
 
 from app.schemas.agent import GraphExecutionOutput, TaskPlan
 from app.services.knowledge.interfaces import MedicalGraphService
-from app.services.knowledge.schema_retriever import QdrantSchemaRetriever
 
 
 class MedicalAgent:
     name = "medical_agent"
 
-    def __init__(self, llm_client, graph_service: MedicalGraphService, retriver: QdrantSchemaRetriever):
+    def __init__(self, llm_client, graph_service: MedicalGraphService):
         self.graph_service = graph_service
         self.llm_client = llm_client
-        self.retriver = retriver
 
     def run(self, task: TaskPlan) -> GraphExecutionOutput:
         try:
             graph_result = self.graph_service.query(
                 query=task.question,
-                retriever=self.retriver,
                 entities=task.entities,
                 semantic_type=task.semantic_type,
                 topk=5,
@@ -52,7 +49,6 @@ class MedicalAgent:
             graph_result = await asyncio.to_thread(
                 self.graph_service.query,
                 query=task.question,
-                retriever=self.retriver,
                 entities=task.entities,
                 semantic_type=task.semantic_type,
                 topk=5,
@@ -81,18 +77,18 @@ class MedicalAgent:
                     if chunk["type"] == "thinking":
                         yield {
                             "type": "thinking",
-                            "data": {"delta": chunk["delta"]}
+                            "delta": chunk["delta"]
                         }
                     elif chunk["type"] == "answer":
                         summary += chunk["delta"]
                         yield {
                             "type": "thinking",
-                            "data": {"delta": chunk["delta"]}
+                            "delta": chunk["delta"]
                         }
 
                 yield {
                     "type": "thinking",
-                    "data": {"delta": "\n"}
+                    "delta": "\n"
                 }
             else:
                 summary = await asyncio.to_thread(self._summarize, task, graph_result)

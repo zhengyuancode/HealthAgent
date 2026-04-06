@@ -1,93 +1,153 @@
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 
 export function useChatStream(apiUrl = '/api/chat/stream') {
-  const messages = ref([])
   const isGenerating = ref(false)
-  
-  const sendMessage = async (content) => {
-    // 添加用户消息
-    const userMessage = {
+
+  const normalizeEvidence = (list = []) => {
+    return list.flatMap((group, groupIndex) => {
+      const evidenceList = Array.isArray(group?.evidence) ? group.evidence : []
+
+      return evidenceList.map((item, evidenceIndex) => ({
+        id: `${groupIndex}-${evidenceIndex}`,
+        source: item.source || '未知来源',
+        title: item.title || '',
+        content:
+          typeof item.content === 'string'
+            ? item.content
+            : JSON.stringify(item.content, null, 2),
+        score: item.score,
+        summary: group?.summary || '',
+        task: group?.task || null
+      }))
+    })
+  }
+
+  const sendMessage = async (sessionId, messageList, content) => {
+    const text = String(content || '').trim()
+    if (!text || isGenerating.value) return
+
+    messageList.push({
       role: 'user',
-      content: content,
+      content: text,
       timestamp: Date.now()
-    }
-    messages.value.push(userMessage)
-    
-    // 添加AI消息占位符
-    const aiMessage = {
+    })
+
+    const aiMessage = reactive({
       role: 'assistant',
       content: '',
+      thinking: '',
+      showThinking: true,
+      loading: true,
+      evidence: [],
+      evidenceReady: false,
       timestamp: Date.now()
-    }
-    messages.value.push(aiMessage)
-    
+    })
+
+    messageList.push(aiMessage)
+
     isGenerating.value = true
-    
+
     try {
+      const token = localStorage.getItem('token')
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
-          message: content
+          session_id: sessionId,
+          query: text
         })
       })
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
+      if (!response.body) {
+        throw new Error('响应体为空')
+      }
+
       const reader = response.body.getReader()
       const decoder = new TextDecoder('utf-8')
-      
+      let buffer = ''
+
       while (true) {
         const { done, value } = await reader.read()
-        
-        if (done) {
-          break
-        }
-        
-        const chunk = decoder.decode(value)
-        // 处理流式数据块
-        const lines = chunk.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.substring(6)
-            if (data.trim() !== '[DONE]') {
-              // 更新最后一条AI消息的内容
-              const lastMessage = messages.value[messages.value.length - 1]
-              if (lastMessage.role === 'assistant') {
-                lastMessage.content += data
-              }
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        const events = buffer.split('\n\n')
+        buffer = events.pop() || ''
+
+        for (const eventText of events) {
+          const line = eventText.trim()
+          if (!line.startsWith('data: ')) continue
+
+          const raw = line.slice(6).trim()
+          if (!raw) continue
+
+          try {
+            const event = JSON.parse(raw)
+
+            switch (event.type) {
+              case 'answer':
+                aiMessage.content += event.data?.delta || event.delta || ''
+                break
+
+              case 'thinking':
+                aiMessage.thinking += event.data?.delta || event.delta || ''
+                break
+
+              case 'status':
+                aiMessage.thinking += event.data?.message || event.message || ''
+                aiMessage.thinking += '\n'
+                break
+
+              case 'plan':
+                aiMessage.thinking += event.data?.message || event.message || ''
+                aiMessage.thinking += '\n'
+                break
+
+              case 'done':
+                aiMessage.loading = false
+                aiMessage.showThinking = false
+                aiMessage.evidence = normalizeEvidence(event.data.final_response.graph_results).concat(
+                  normalizeEvidence(event.data.final_response.rag_results)
+                )
+                aiMessage.evidenceReady = true
+                console.log(normalizeEvidence(event.data.final_response.graph_results))
+                console.log(normalizeEvidence(event.data.final_response.rag_results))
+                break
+
+              case 'error':
+                aiMessage.loading = false
+                aiMessage.showThinking = false
+                aiMessage.content += `\n[错误] ${event.data?.message || '未知错误'}`
+                break
+
+              default:
+                console.log('未知事件:', event)
             }
+          } catch (err) {
+            console.error('SSE JSON 解析失败:', raw, err)
           }
         }
       }
     } catch (error) {
       console.error('Error in chat stream:', error)
-      // 移除AI消息占位符
-      messages.value.pop()
-      // 添加错误消息
-      messages.value.push({
-        role: 'assistant',
-        content: '抱歉，发生了一个错误。请稍后再试。',
-        timestamp: Date.now()
-      })
+      aiMessage.content = '抱歉，发生了错误，请稍后再试。'
     } finally {
+      aiMessage.loading = false
       isGenerating.value = false
     }
   }
-  
-  const clearHistory = () => {
-    messages.value = []
-  }
-  
+
   return {
-    messages,
     isGenerating,
-    sendMessage,
-    clearHistory
+    sendMessage
   }
 }

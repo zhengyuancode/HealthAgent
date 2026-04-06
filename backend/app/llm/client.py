@@ -65,15 +65,13 @@ class LLMClient:
         )
 
         for chunk in completion:
-            if not chunk.choices:
+            if not chunk.choices or chunk.choices == []:
                 # 最后一个 chunk 可能主要是 usage
                 continue
 
             delta = chunk.choices[0].delta
-
             reasoning_text = getattr(delta, "reasoning_content", None)
             answer_text = getattr(delta, "content", None)
-
             if reasoning_text:
                 yield {
                     "type": "thinking",
@@ -181,7 +179,7 @@ class LVLMClient(BaseModelClient):
             response_format={"type": "json_object"},
             **kwargs,
         )
-
+        print(response)
         content = response.choices[0].message.content
         return json.loads(content)
 
@@ -278,7 +276,7 @@ def test_lvlm():
         print(text, end="", flush=True)
     
 if __name__ == "__main__":
-    test_embedding()
-    # test_llm()
+    # test_embedding()
+    test_llm()
     # test_lvlm()
     

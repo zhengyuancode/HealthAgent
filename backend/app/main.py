@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from app.core.config import Settings
 from app.api.chat import router as chat_router
 from app.api.auth import router as auth_router
+from app.api.chat_session import router as chat_session_router
 
 def create_app() -> FastAPI:
     settings = Settings()
@@ -15,6 +16,8 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(chat_router, prefix="/api", tags=["chat"])
     app.include_router(auth_router, prefix="/api", tags=["auth"])
+    app.include_router(chat_session_router, prefix="/api", tags=["chat-session"])
+    
     
     return app
 

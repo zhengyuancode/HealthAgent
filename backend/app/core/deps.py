@@ -6,10 +6,10 @@ from app.db.session import get_db
 from app.db.user import User
 from app.repositories.user_repository import UserRepository
 from app.utils.security import TokenExpiredError, TokenInvalidError, parse_token
+from app.core.config import Settings
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
-
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),

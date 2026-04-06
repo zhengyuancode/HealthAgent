@@ -8,7 +8,6 @@ class MedicalGraphService(ABC):
     def query(
         self,
         query: str,
-        retriever: QdrantSchemaRetriever,
         entities: Optional[List[str]] = None,
         semantic_type: str = "",
         topk: int = 5,

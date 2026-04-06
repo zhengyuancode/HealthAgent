@@ -222,13 +222,12 @@ class LocalPolicyRAGService(PolicyRAGService):
 
         return list(vector)
 
-    def _pick_content(self, payload: Dict[str, Any], chunk_file: str) -> str:
+    def _pick_content(self, payload: Dict[str, Any]) -> str:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         chunk_path = os.path.join(BASE_DIR,"..", "..","rag","data","policy_chunk_store.json") 
         chunk_id = payload.get("chunk_id")
         with open(chunk_path, "r", encoding="utf-8") as f:
             # 加载JSON数据为Python字典/列表
             chunk_data = json.load(f)
-        return (
-            chunk_data[chunk_id]["text"]
-        )
+        return chunk_data[chunk_id]["text"]
+        

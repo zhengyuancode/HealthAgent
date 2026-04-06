@@ -26,6 +26,14 @@ class Settings(BaseSettings):
         )
     
     
+    # Redis settings
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: str = "dzy2001818"
+    chat_window_rounds: int = 3
+    chat_window_ttl_seconds: int = 60 * 60 * 24 * 7  # 7天
+    chat_summary_qdrant_collection: str = "chat_summary_memory"
+
     qdrant_url: str = f"http://{server_ip}:6333"
     
     neo4j_url: str = f"bolt://{server_ip}:7687"

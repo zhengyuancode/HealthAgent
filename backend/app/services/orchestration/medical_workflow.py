@@ -13,6 +13,7 @@ from app.agents.planner_agent import PlannerAgent
 from app.agents.medical_agent import MedicalAgent
 from app.agents.policy_agent import PolicyRAGAgent
 from app.agents.orchestrator import MedicalOrchestrator
+from app.agents.memory_agent import ProfileMemoryAgent, ConversationSummaryAgent
 
 
 def build_medical_orchestrator(
@@ -27,7 +28,7 @@ def build_medical_orchestrator(
 
     medical_agent = MedicalAgent(
         llm_client=llm_client,
-        medical_graph_service=medical_graph_service,
+        graph_service=medical_graph_service,
     )
     policy_rag_agent = PolicyRAGAgent(
         llm_client=llm_client,
@@ -37,7 +38,21 @@ def build_medical_orchestrator(
     return MedicalOrchestrator(
         analyzer=analyzer,
         planner=planner,
-        graph_agent=medical_agent,
+        medical_agent=medical_agent,
         policy_rag_agent=policy_rag_agent,
         llm_client=llm_client,
     )
+    
+def build_ProfileMemoryAgent(
+    settings: Settings = Depends(get_settings),
+) -> ProfileMemoryAgent:
+    llm_client = LLMClient(settings)
+    return ProfileMemoryAgent(llm_client=llm_client)
+
+def build_ConversationSummaryAgent(
+    settings: Settings = Depends(get_settings),
+) -> ConversationSummaryAgent:
+    llm_client = LLMClient(settings)
+    return ConversationSummaryAgent(llm_client=llm_client)
+
+    

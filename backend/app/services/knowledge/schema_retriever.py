@@ -67,8 +67,6 @@ def unique_keep_order(items):
     return result
 
 class QdrantSchemaRetriever:
-    ENTITY_SCORE_THRESHOLD = 0.45
-    RELATION_SCORE_THRESHOLD = 0.35
     def __init__(
         self,
         client: QdrantClient,
@@ -192,7 +190,6 @@ class QdrantSchemaRetriever:
                     [query],
                     task="retrieval.query"
                 )
-
         hits_list=[]
         for v in query_vector[0]["embeddings"]:
             resp = self.client.query_points(
@@ -206,7 +203,6 @@ class QdrantSchemaRetriever:
 
             hits = getattr(resp, "points", resp)
             hits_list.append(hits)
-
         entities = []
         for hits in hits_list:
             for hit in hits:
@@ -239,7 +235,6 @@ class QdrantSchemaRetriever:
             doc_vectors = []
             for p in points:
                 payload = p.payload or {}
-                seq_num = payload.get("seq_num", -1)
 
                 vector = None
                 if hasattr(p, "vector") and p.vector is not None:
@@ -252,10 +247,11 @@ class QdrantSchemaRetriever:
 
                 doc_vectors.append(vector)
 
+            score = self.late_sim_score(query_vector[0]["embeddings"], doc_vectors)
             candidate_docs.append({
                 "doc_key": doc_key,
                 "doc_vectors": doc_vectors,
-                "score": self.late_sim_score(query_vector[0]["embedding"], doc_vectors)
+                "score": score
             })
         sorted_docs = sorted(candidate_docs, key=lambda x: x["score"], reverse=True)
         return sorted_docs[:top_k]
