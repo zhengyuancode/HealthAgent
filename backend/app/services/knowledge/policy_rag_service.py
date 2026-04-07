@@ -14,11 +14,7 @@ from app.services.knowledge.interfaces import PolicyRAGService
 
 
 class LocalPolicyRAGService(PolicyRAGService):
-    """
-    基于 Qdrant 的本地政策 RAG 检索服务：
-    - 第一阶段：按 query 的每个 token 向量召回候选 chunk
-    - 第二阶段：对候选 chunk 做 late interaction / MaxSim 重排
-    """
+
 
     def __init__(self, settings: Settings, embedder=None, collection_name: str = "policy"):
         self.settings = settings
@@ -100,11 +96,7 @@ class LocalPolicyRAGService(PolicyRAGService):
         return candidate_docs[:top_k]
 
     def late_sim_score(self, query_vectors, doc_vectors) -> float:
-        """
-        MaxSim / Late Interaction:
-        score(Q, D) = sum_q max_d sim(q, d)
-        这里用点积；如果你的向量事先做过归一化，那么它就等价于 cosine 相似度。
-        """
+
         query_vectors = np.asarray(query_vectors, dtype=np.float32)  # [Q, D]
         doc_vectors = np.asarray(doc_vectors, dtype=np.float32)      # [T, D]
 
@@ -115,15 +107,11 @@ class LocalPolicyRAGService(PolicyRAGService):
         return float(np.max(sim_matrix, axis=1).sum())
 
     def _build_query_text(self, query: str, entities: Optional[List[str]]) -> str:
-        """
-        将 query 和实体做一个轻量融合。
-        实体不是必须，但通常能增强政策检索的召回。
-        """
+
         entities = [e.strip() for e in (entities or []) if e and e.strip()]
         if not entities:
             return query.strip()
 
-        # 简单有效，不搞太复杂
         extra = " ".join(dict.fromkeys(entities))
         return f"{query.strip()} {extra}".strip()
 

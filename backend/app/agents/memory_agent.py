@@ -38,6 +38,7 @@ class ProfileMemoryAgent:
 - 长期生活方式特征(long_term_lifestyle_traits)
 
 不要提取短期状态、临时情绪、一次性事件。
+所有信息应尽可能简洁，简短，不要包含没有意义的信息。
 构建json中的field_key时，请使用上述括号中的英文标识，而不是中文描述。
 field_value代表对应的信息。
 
